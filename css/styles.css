@@ -129,35 +129,37 @@ ul { list-style: none; }
 .burger {
   display: none; width: 40px; height: 40px; border-radius: var(--rm);
   background: var(--g100); flex-direction: column; align-items: center;
-  justify-content: center; gap: 5px;
+  justify-content: center; gap: 5px; flex-shrink: 0;
+  position: relative;
 }
 .burger span {
   display: block; width: 18px; height: 2px;
   background: var(--ink); border-radius: 2px;
-  transition: all .26s var(--ease); transform-origin: center;
+  transition: all .26s var(--ease);
+  transform-origin: center;
+  position: relative;
 }
-.burger.open span:nth-child(1) { transform: rotate(45deg) translate(2.5px,3.5px); }
+.burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.burger.open span:nth-child(3) { transform: rotate(-45deg) translate(2.5px,-3.5px); }
+.burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* ── DRAWER ──────────────────────────────── */
 .drawer {
   display: block;
   position: fixed; inset: 0; z-index: 190;
   pointer-events: none;
-  visibility: hidden;
-  transition: visibility 0s linear .36s;
 }
 .drawer-bg {
   position: absolute; inset: 0;
   background: rgba(15,39,68,.45);
-  opacity: 0; transition: opacity .3s;
+  opacity: 0;
+  transition: opacity .3s ease;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 .drawer-panel {
   position: absolute; top: 0; right: 0;
-  width: min(300px,88vw); height: 100%;
+  width: min(300px, 88vw); height: 100%;
   background: #fff;
   transform: translateX(100%);
   transition: transform .36s var(--ease);
@@ -165,11 +167,10 @@ ul { list-style: none; }
   display: flex; flex-direction: column;
   box-shadow: var(--sh4);
   overflow-y: auto;
+  z-index: 1;
 }
 .drawer.open {
   pointer-events: auto;
-  visibility: visible;
-  transition: visibility 0s linear 0s;
 }
 .drawer.open .drawer-bg    { opacity: 1; }
 .drawer.open .drawer-panel { transform: translateX(0); }
@@ -515,5 +516,3 @@ ul { list-style: none; }
   .slider-controls { flex-direction: column; gap: 16px; }
   .sec-hdr       { margin-bottom: 28px; }
 }
-
-
