@@ -1,226 +1,307 @@
 /* =========================================
-   CLÍNICA SML — main.js
+   CLÍNICA SML — main.js  v4
    ========================================= */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* ── 1. NAV scroll shadow ────────────────── */
-  const nav = document.getElementById('nav');
-  const onScroll = () => nav.classList.toggle('sc', scrollY > 8);
-  window.addEventListener('scroll', onScroll, { passive: true });
+  /* ══════════════════════════════════════
+     LOGO ANIMATION — Web Animations API
+     element.animate() é compositado pelo browser
+     (GPU), muito mais fluido que @keyframes com
+     várias animações simultâneas + sem flash de
+     classe toggling.
+  ══════════════════════════════════════ */
+  const EASE_IN  = 'cubic-bezier(.16,.84,.24,1)';   // entrada suave e longa
+  const EASE_OUT = 'cubic-bezier(.6,0,.8,.3)';      // saída suave e longa
 
-  /* ── 2. Mobile drawer ────────────────────── */
-  const burger    = document.getElementById('burger');
-  const drawer    = document.getElementById('drawer');
-  const drawerBg  = document.getElementById('drawerBg');
+  function animateLogo(root, { loop = false } = {}) {
+    if (!root) return null;
+    const pre  = root.querySelector('.pre');
+    const mono = root.querySelector('.mono');
+    const rule = root.querySelector('.rule');
+    const sub  = root.querySelector('.sub');
+    const parts = [pre, mono, rule, sub].filter(Boolean);
 
-  function toggleDrawer(open) {
-    drawer.classList.toggle('open', open);
-    burger.classList.toggle('open', open);
-    document.body.style.overflow = open ? 'hidden' : '';
+    // cancela animações anteriores
+    parts.forEach(el => el.getAnimations().forEach(a => a.cancel()));
+
+    const enterDur = 1500;  // duração da entrada de cada elemento — mais lenta
+    const stagger  = 260;   // intervalo entre cada elemento começar — mais espaçado
+
+    const fillMode = 'forwards';
+
+    const anims = [];
+
+    if (pre) anims.push(pre.animate(
+      [
+        { opacity: 0, transform: 'translateY(10px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ],
+      { duration: enterDur, delay: 0,            easing: EASE_IN, fill: fillMode }
+    ));
+
+    if (mono) anims.push(mono.animate(
+      [
+        { opacity: 0, letterSpacing: '.3em', transform: 'scale(.96)' },
+        { opacity: 1, letterSpacing: '.08em', transform: 'scale(1)' }
+      ],
+      { duration: enterDur + 300, delay: stagger,     easing: EASE_IN, fill: fillMode }
+    ));
+
+    if (rule) anims.push(rule.animate(
+      [
+        { opacity: 0, transform: 'scaleX(0)' },
+        { opacity: 1, transform: 'scaleX(1)' }
+      ],
+      { duration: enterDur, delay: stagger * 2.4, easing: 'cubic-bezier(.4,0,.2,1)', fill: fillMode }
+    ));
+
+    if (sub) anims.push(sub.animate(
+      [
+        { opacity: 0, transform: 'translateY(10px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ],
+      { duration: enterDur, delay: stagger * 3.2, easing: EASE_IN, fill: fillMode }
+    ));
+
+    if (!loop) return anims;
+
+    // ─ Loop: após ficar visível por holdMs, faz fade-out lento
+    //   e reinicia a entrada — sempre via WAAPI, sem remover classes.
+    const totalEnter = stagger * 3.2 + enterDur; // tempo até tudo visível
+    const holdMs      = 14000;                    // tempo visível — bem mais longo
+    const exitDur     = 1400;                     // saída mais lenta
+
+    setTimeout(function cycle() {
+      const exitAnims = parts.map((el, i) => el.animate(
+        [
+          { opacity: 1, transform: 'translateY(0)' },
+          { opacity: 0, transform: 'translateY(-8px)' }
+        ],
+        { duration: exitDur, delay: i * 90, easing: EASE_OUT, fill: 'forwards' }
+      ));
+
+      Promise.all(exitAnims.map(a => a.finished)).then(() => {
+        animateLogo(root, { loop: true });
+      });
+    }, totalEnter + holdMs);
+
+    return anims;
   }
-  burger.addEventListener('click', () => toggleDrawer(!drawer.classList.contains('open')));
-  drawerBg.addEventListener('click', () => toggleDrawer(false));
-  drawer.querySelectorAll('.dl').forEach(l => l.addEventListener('click', () => toggleDrawer(false)));
 
-  /* ── 3. Scroll reveal ────────────────────── */
-  const revealObs = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('on');
-        revealObs.unobserve(e.target);
-      }
-    });
+  /* ══════════════════════════════════════
+     SPLASH — aparece, anima uma vez, sai
+  ══════════════════════════════════════ */
+  const splash     = document.getElementById('splash');
+  const splashLogo = document.getElementById('splashLogo');
+
+  if (splash) {
+    document.body.classList.add('splashing');
+    animateLogo(splashLogo, { loop: false });
+    setTimeout(() => {
+      splash.classList.add('hide');
+      document.body.classList.remove('splashing');
+    }, 3200);
+  }
+
+  // Nav e footer: loop contínuo, fases distintas para não sincronizar
+  const navLogo    = document.getElementById('navLogo');
+  const footerLogo = document.getElementById('footerLogo');
+  if (navLogo)    animateLogo(navLogo,    { loop: true });
+  if (footerLogo) setTimeout(() => animateLogo(footerLogo, { loop: true }), 1800);
+
+  /* ══════════════════════════════════════
+     NAV scroll shadow
+  ══════════════════════════════════════ */
+  const nav = document.getElementById('nav');
+  if (nav) window.addEventListener('scroll', () => nav.classList.toggle('sc', scrollY > 8), { passive: true });
+
+  /* ══════════════════════════════════════
+     MOBILE DRAWER
+  ══════════════════════════════════════ */
+  const burger   = document.getElementById('burger');
+  const drawer   = document.getElementById('drawer');
+  const drawerBg = document.getElementById('drawerBg');
+
+  function openDrawer()  { drawer.classList.add('open');    burger.classList.add('open');    document.body.style.overflow='hidden'; }
+  function closeDrawer() { drawer.classList.remove('open'); burger.classList.remove('open'); document.body.style.overflow=''; }
+
+  if (burger && drawer) {
+    burger.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+    drawerBg?.addEventListener('click', closeDrawer);
+    drawer.querySelectorAll('.dl').forEach(l => l.addEventListener('click', closeDrawer));
+    document.addEventListener('keydown', e => { if (e.key==='Escape') closeDrawer(); });
+  }
+
+  /* ══════════════════════════════════════
+     SCROLL REVEAL
+  ══════════════════════════════════════ */
+  const ro = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); ro.unobserve(e.target); } });
   }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
+  document.querySelectorAll('.rv').forEach(el => ro.observe(el));
 
-  document.querySelectorAll('.rv').forEach(el => revealObs.observe(el));
-
-  /* ── 4. Specialties slider ───────────────── */
-  const track  = document.querySelector('.spec-track');
-  const cards  = Array.from(document.querySelectorAll('.spec-card'));
-  const dotsWrap  = document.querySelector('.slider-dots');
-  const btnPrev   = document.getElementById('sliderPrev');
-  const btnNext   = document.getElementById('sliderNext');
+  /* ══════════════════════════════════════
+     SPECIALTIES SLIDER
+  ══════════════════════════════════════ */
+  const track    = document.querySelector('.spec-track');
+  const cards    = Array.from(document.querySelectorAll('.spec-card'));
+  const dotsWrap = document.querySelector('.slider-dots');
+  const btnPrev  = document.getElementById('sliderPrev');
+  const btnNext  = document.getElementById('sliderNext');
 
   if (track && cards.length) {
-    let current    = 0;
-    let perView    = getPerView();
-    let total      = Math.ceil(cards.length / perView);
-    let startX     = 0;
-    let isDragging = false;
+    let current = 0, perView = getPV(), startX = 0, drag = false;
 
-    function getPerView() {
-      if (window.innerWidth <= 640)  return 1;
-      if (window.innerWidth <= 1040) return 2;
-      return 4;
+    function getPV() {
+      return window.innerWidth <= 640 ? 1 : window.innerWidth <= 1040 ? 2 : 4;
     }
-
-    function getCardWidth() {
-      if (!cards[0]) return 0;
-      return cards[0].getBoundingClientRect().width + 16; // 16 = gap
-    }
+    function cw() { return (cards[0]?.getBoundingClientRect().width || 0) + 16; }
 
     function buildDots() {
       if (!dotsWrap) return;
       dotsWrap.innerHTML = '';
-      total = Math.ceil(cards.length / perView);
-      for (let i = 0; i < total; i++) {
+      const tot = Math.ceil(cards.length / perView);
+      for (let i = 0; i < tot; i++) {
         const d = document.createElement('button');
         d.className = 'slider-dot' + (i === current ? ' active' : '');
-        d.setAttribute('aria-label', `Ir para slide ${i + 1}`);
+        d.setAttribute('aria-label', `Slide ${i+1}`);
         d.addEventListener('click', () => goTo(i));
         dotsWrap.appendChild(d);
       }
     }
-
-    function updateDots() {
-      if (!dotsWrap) return;
-      dotsWrap.querySelectorAll('.slider-dot').forEach((d, i) => {
-        d.classList.toggle('active', i === current);
-      });
-    }
-
     function goTo(idx) {
-      total   = Math.ceil(cards.length / perView);
-      current = Math.max(0, Math.min(idx, total - 1));
-      const offset = current * perView * getCardWidth();
-      track.style.transform = `translateX(-${offset}px)`;
-      updateDots();
+      const tot = Math.ceil(cards.length / perView);
+      current = Math.max(0, Math.min(idx, tot - 1));
+      track.style.transform = `translateX(-${current * perView * cw()}px)`;
+      dotsWrap?.querySelectorAll('.slider-dot').forEach((d,i) => d.classList.toggle('active', i===current));
       if (btnPrev) btnPrev.disabled = current === 0;
-      if (btnNext) btnNext.disabled = current === total - 1;
+      if (btnNext) btnNext.disabled = current >= tot - 1;
     }
-
-    if (btnPrev) btnPrev.addEventListener('click', () => goTo(current - 1));
-    if (btnNext) btnNext.addEventListener('click', () => goTo(current + 1));
-
-    // Touch / drag support
-    track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; isDragging = true; }, { passive: true });
-    track.addEventListener('touchend', e => {
-      if (!isDragging) return;
-      const diff = startX - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 50) goTo(diff > 0 ? current + 1 : current - 1);
-      isDragging = false;
+    btnPrev?.addEventListener('click', () => goTo(current - 1));
+    btnNext?.addEventListener('click', () => goTo(current + 1));
+    track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; drag = true; }, { passive: true });
+    track.addEventListener('touchend',   e => {
+      if (!drag) return;
+      const d = startX - e.changedTouches[0].clientX;
+      if (Math.abs(d) > 50) goTo(d > 0 ? current+1 : current-1);
+      drag = false;
     });
-    track.addEventListener('mousedown', e => { startX = e.clientX; isDragging = true; });
-    window.addEventListener('mouseup', e => {
-      if (!isDragging) return;
-      const diff = startX - e.clientX;
-      if (Math.abs(diff) > 50) goTo(diff > 0 ? current + 1 : current - 1);
-      isDragging = false;
-    });
-
-    // Recalc on resize
     window.addEventListener('resize', () => {
-      const newPV = getPerView();
-      if (newPV !== perView) {
-        perView = newPV;
-        current = 0;
-        buildDots();
-        goTo(0);
-      }
+      const nv = getPV();
+      if (nv !== perView) { perView = nv; current = 0; buildDots(); goTo(0); }
     });
-
-    buildDots();
-    goTo(0);
+    buildDots(); goTo(0);
   }
 
-  /* ── 5. Animated counters ────────────────── */
-  function animateCounter(el) {
+  /* ══════════════════════════════════════
+     ANIMATED COUNTERS
+  ══════════════════════════════════════ */
+  function animCounter(el) {
     const target = parseFloat(el.dataset.target);
     const suffix = el.dataset.suffix || '';
-    const prefix = el.dataset.prefix || '';
-    const duration = 1800;
-    const start = performance.now();
-
-    function step(now) {
-      const elapsed  = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-out-quart
-      const eased    = 1 - Math.pow(1 - progress, 4);
-      const val      = Math.round(eased * target);
-      el.textContent = prefix + val.toLocaleString('pt-BR') + suffix;
-      if (progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+    const t0 = performance.now();
+    (function step(now) {
+      const p = Math.min((now - t0) / 1800, 1);
+      el.textContent = Math.round((1 - Math.pow(1-p, 4)) * target) + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    })(t0);
   }
-
-  const counterObs = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        animateCounter(e.target);
-        counterObs.unobserve(e.target);
-      }
-    });
+  const co = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { animCounter(e.target); co.unobserve(e.target); } });
   }, { threshold: 0.5 });
+  document.querySelectorAll('[data-target]').forEach(el => co.observe(el));
 
-  document.querySelectorAll('[data-target]').forEach(el => counterObs.observe(el));
-
-  /* ── 6. Hero parallax (subtle) ───────────── */
-  const heroImg = document.querySelector('.hero-img-wrap img');
-  if (heroImg) {
-    window.addEventListener('scroll', () => {
-      const y = window.scrollY;
-      if (y < 600) heroImg.style.transform = `translateY(${y * 0.12}px)`;
-    }, { passive: true });
-  }
-
-  /* ── 7. Active nav link highlight ───────── */
-  const sections = document.querySelectorAll('section[id], header[id]');
-  const navLinks  = document.querySelectorAll('.nav-links a');
-
-  const activeObs = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        navLinks.forEach(a => {
-          a.style.color = '';
-          a.style.background = '';
-          if (a.getAttribute('href') === `#${e.target.id}`) {
-            a.style.color = 'var(--blue)';
-            a.style.background = 'var(--blue-ghost)';
-          }
-        });
-      }
-    });
-  }, { threshold: 0.4 });
-
-  sections.forEach(s => activeObs.observe(s));
-
-  /* ── 8. Attend cards hover tilt ─────────── */
+  /* ══════════════════════════════════════
+     ATTEND CARDS 3D TILT
+  ══════════════════════════════════════ */
   document.querySelectorAll('.attend-card').forEach(card => {
     card.addEventListener('mousemove', e => {
-      const rect = card.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width  - 0.5;
-      const y = (e.clientY - rect.top)  / rect.height - 0.5;
-      card.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) scale(1.02)`;
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width  - 0.5;
+      const y = (e.clientY - r.top)  / r.height - 0.5;
+      card.style.transform = `perspective(600px) rotateY(${x*5}deg) rotateX(${-y*5}deg) translateY(-4px)`;
     });
-    card.addEventListener('mouseleave', () => {
-      card.style.transform = '';
-    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
   });
 
-  /* ── 9. Floating cards entrance delay ────── */
-  const floatCards = document.querySelectorAll('.hero-float, .hero-float2, .about-badge, .about-badge2');
-  floatCards.forEach((el, i) => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(14px)';
-    el.style.transition = 'opacity .55s var(--ease), transform .55s var(--ease)';
-    el.style.transitionDelay = `${0.6 + i * 0.12}s`;
-    setTimeout(() => {
-      el.style.opacity = '1';
-      el.style.transform = '';
-    }, 100);
-  });
+  /* ══════════════════════════════════════
+     ACTIVE NAV LINK
+  ══════════════════════════════════════ */
+  const navLinks = document.querySelectorAll('.nav-links a');
+  const secObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      navLinks.forEach(a => {
+        const on = a.getAttribute('href') === `#${e.target.id}`;
+        a.style.color = on ? 'var(--blue)' : '';
+        a.style.background = on ? 'var(--blue-ghost)' : '';
+      });
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll('section[id],header[id]').forEach(s => secObs.observe(s));
 
-  /* ── 10. Smooth anchor scrolling with offset ─ */
+  /* ══════════════════════════════════════
+     SMOOTH ANCHOR SCROLL
+  ══════════════════════════════════════ */
   document.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', e => {
-      const id  = a.getAttribute('href').slice(1);
+      const id = a.getAttribute('href').slice(1);
       const tgt = document.getElementById(id);
       if (!tgt) return;
       e.preventDefault();
-      const top = tgt.getBoundingClientRect().top + scrollY - 74;
-      window.scrollTo({ top, behavior: 'smooth' });
+      window.scrollTo({ top: tgt.getBoundingClientRect().top + scrollY - 72, behavior: 'smooth' });
     });
   });
+
+  /* ══════════════════════════════════════
+     BADGE ENTRANCE ANIMATION
+  ══════════════════════════════════════ */
+  document.querySelectorAll('.about-badge,.about-badge2').forEach((el, i) => {
+    el.style.cssText += `opacity:0;transform:translateY(14px);transition:opacity .55s var(--ease),transform .55s var(--ease);transition-delay:${0.5+i*.14}s`;
+    setTimeout(() => { el.style.opacity='1'; el.style.transform=''; }, 50);
+  });
+
+  /* ══════════════════════════════════════
+     CONTACT FORM → WHATSAPP
+  ══════════════════════════════════════ */
+  const contactForm   = document.getElementById('contactForm');
+  const emailFallback = document.getElementById('emailFallback');
+
+  function buildMsg(data) {
+    return [
+      'Olá, Dr. Sandro. Gostaria de agendar uma consulta na Clínica SML.',
+      '',
+      `Nome: ${data.get('nome') || ''}`,
+      `Telefone: ${data.get('telefone') || ''}`,
+      `Tipo de atendimento: ${data.get('tipo') || ''}`,
+      `Mensagem: ${data.get('mensagem') || 'Não informado'}`
+    ].join('\n');
+  }
+
+  if (contactForm) {
+    contactForm.addEventListener('input', () => {
+      if (!emailFallback) return;
+      const d = new FormData(contactForm);
+      emailFallback.href = `mailto:sandromiguel201@outlook.com?subject=${
+        encodeURIComponent('Contato pelo site - Clínica SML')
+      }&body=${encodeURIComponent(buildMsg(d))}`;
+    });
+    contactForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const d = new FormData(contactForm);
+      window.open(`https://wa.me/5562982592599?text=${encodeURIComponent(buildMsg(d))}`, '_blank', 'noopener');
+    });
+  }
+
+  /* ══════════════════════════════════════
+     DOCTOR FAB WIDGET
+  ══════════════════════════════════════ */
+  const doctorWidget = document.getElementById('doctorWidget');
+  const doctorFab    = document.getElementById('doctorFab');
+  if (doctorWidget && doctorFab) {
+    doctorFab.addEventListener('click', e => { e.stopPropagation(); doctorWidget.classList.toggle('open'); });
+    document.addEventListener('click', e => { if (!doctorWidget.contains(e.target)) doctorWidget.classList.remove('open'); });
+  }
 
 });
