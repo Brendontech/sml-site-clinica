@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="28" fill="#ffffff"/>
+  <text x="64" y="76" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="700" letter-spacing="-3">
+    <tspan fill="#143052">S</tspan><tspan fill="#2f6fb0">M</tspan><tspan fill="#143052">L</tspan>
+  </text>
+  <rect x="42" y="90" width="44" height="4" rx="2" fill="#17b3a3"/>
+</svg>
